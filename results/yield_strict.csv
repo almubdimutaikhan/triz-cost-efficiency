@@ -1,0 +1,5 @@
+mode,cases,calls,top_solutions,top_rate,rate_ci_lo,rate_ci_hi,tokens_total,yield_per_100k,yield_ci_lo,yield_ci_hi
+P_L_TRIZ_OFF,40,160,18,0.1125,0.075,0.15,203519,8.844,5.905,11.826
+P_L_TRIZ_ON,40,160,18,0.1125,0.075,0.1562,217196,8.287,5.479,11.283
+P_S_TRIZ_OFF,40,160,14,0.0875,0.0563,0.125,97176,14.407,9.179,20.06
+P_S_TRIZ_ON,40,160,12,0.075,0.0437,0.1125,104594,11.473,6.628,17.124

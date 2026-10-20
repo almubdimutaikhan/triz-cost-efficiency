@@ -62,14 +62,14 @@ Figure 5 "context ladder" framing: cost vs quality, not a saturating-count yield
 ## Status
 
 - ✅ **v1 — cost vs. win-rate, zero new API calls.** Done. See `results/cost_efficiency.csv`
-  and Results below. Reuses `triz-on-vs-off-agent`'s already-run judgements (the current
-  cross-family LLM evaluator, and the Jev decision-model judge added in that project's most
-  recent session) and computes exact token counts locally with `tiktoken` on text already
-  sitting in that repo's cache.
-- ⏳ **Phase 2 — absolute per-solution scoring, for a true yield metric.** Not started. See
-  "Phase 2" below. Trivial cost (Jev judged 640 pairs for $0.025 in the sibling project;
-  absolute scoring is the same order of magnitude).
-- ⏳ **Phase 3 — write-up.** Not started; depends on Phase 2's result.
+  and Results (v1) below. Reuses `triz-on-vs-off-agent`'s already-run judgements (the
+  current cross-family LLM evaluator, and the Jev decision-model judge added in that
+  project's most recent session) and computes exact token counts locally with `tiktoken` on
+  text already sitting in that repo's cache.
+- ✅ **Phase 2 — absolute per-solution scoring, the actual IM-LLM yield metric.** Done. See
+  `results/yield.csv` and Results (Phase 2) below. Cost: **$0.0258** for all 640 solutions
+  (Jev, `scripts/score_solutions.py`).
+- ⏳ **Phase 3 — write-up.** Not started; the two results sections below are the raw material.
 
 ## Pipeline
 
@@ -90,15 +90,19 @@ Figure 5 "context ladder" framing: cost vs quality, not a saturating-count yield
 ### Reproduce
 
 ```bash
-pip install -r requirements.txt   # just tiktoken
+pip install -r requirements.txt   # tiktoken, requests, pyyaml
 # requires ../triz-on-vs-off-agent cloned alongside this repo (its generations + judgements
 # are read, not duplicated here — see "Why no vendored data" below)
+
+# v1 — no API key needed; reads only what the sibling project already generated and judged
 python scripts/extract_calls.py --src ../triz-on-vs-off-agent --run factorial_129
 python scripts/cost_efficiency.py --src ../triz-on-vs-off-agent --run factorial_129
-```
 
-No API key needed for v1 — everything it reads was already generated and judged by the
-sibling project; token counting is local and free.
+# Phase 2 — needs an API key (reuses the sibling repo's .env / env vars; same gateway)
+python scripts/score_solutions.py --src ../triz-on-vs-off-agent --run factorial_129   # ~$0.03, 640 Jev calls
+python scripts/yield_analysis.py --threshold 2.2
+python scripts/yield_analysis.py --threshold 2.3 --out results/yield_strict.csv       # robustness check
+```
 
 **Why no vendored data copy.** IM-LLM ships its `runs/`/`results/` directly so the paper
 rebuilds fully offline with no sibling dependency. This repo was set up to do the same, but
@@ -147,41 +151,83 @@ position bias (only ~52% of its pairs are order-consistent, per the sibling repo
 `JEV_TRIZ_REPORT.md`), so its intervals are wider and its point estimates noisier. Read the
 Gemini row as primary and the Jev row as a cheap, partially-independent cross-check.
 
-## Phase 2 (planned, not run)
+## Results (Phase 2) — the actual IM-LLM yield metric
 
-To get an IM-LLM-style **yield** (e.g. "wins per 1,000 extra tokens," or a true top-solution
-rate against an absolute threshold) rather than a bare win-rate-vs-tokens table, the judge
-needs to emit — and this repo needs to **store**, not just parse — an absolute per-solution
-score, the way IM-LLM's `top_ideas.py` does. Concretely:
+`scripts/score_solutions.py` asks Jev to place each of the 640 solutions on a 5-level
+ordered creativity scale (originality, usefulness, feasibility, specificity, elegance — the
+same rubric as v1 and as the factorial evaluator), independent of any pairing, and returns
+an expected position (0-4, a continuous value since it reflects a probability distribution
+over the 5 levels, not a single pick). All 640 scored, 0 errors, **$0.0258** total.
 
-1. Re-prompt (cheap: Jev judged all 640 pairs in the sibling project for $0.025; an
-   absolute-scoring pass over ~320 unique solutions is the same order of magnitude) for a
-   **0-10 score per solution**, independent of any pairing — not reusing the existing pairwise
-   judgements, whose raw text was truncated before the scores were ever written down.
-2. Define a top-solution threshold the same principled way IM-LLM did (§3.6 of that paper):
-   pick the step closest to the top ~10-12% of all solutions, report the exact share it
-   keeps, and check a stricter cut as a robustness check.
-3. Compute yield = top solutions / 100k tokens per arm, with the same case-clustered
-   bootstrap as `tail_charts.py` uses, and the same arm-vs-arm sign test across cases.
-4. Pre-register the comparison before running it (as IM-LLM's persona follow-up and this
-   project's own `M6_50ideas/` do): the prediction, stated now, is that TRIZ-on's yield will
-   be *lower* than TRIZ-off's at matched length, mirroring v1's win-rate-vs-cost pattern —
-   this is written down before Phase 2 runs so the result isn't fit after the fact.
+**Threshold.** Following IM-LLM §3.6: report the share each candidate cut keeps rather than
+assume an exact top-10% exists. Position ≥ **2.2** keeps 78/640 = **12.2%** — almost exactly
+IM-LLM's own ≥4.0-of-5 threshold, which kept 12.3%. A stricter ≥2.3 (9.7%) is reported as a
+robustness check, as IM-LLM also did with a second threshold.
+
+`scripts/yield_analysis.py --threshold 2.2`:
+
+| Arm | Top solutions | Top-idea rate [95% CI] | Yield (top solutions / 100k tokens) [95% CI] |
+|---|---|---|---|
+| `P_L_TRIZ_OFF` | 22/160 | 13.8% [10.0, 17.5] | 10.81 [7.85, 13.81] |
+| `P_L_TRIZ_ON` | 24/160 | 15.0% [10.6, 19.4] | 11.05 [7.83, 14.14] |
+| `P_S_TRIZ_OFF` | 18/160 | 11.2% [7.5, 15.6] | **18.52** [12.29, 25.30] |
+| `P_S_TRIZ_ON` | 14/160 | 8.8% [5.0, 12.5] | 13.38 [7.69, 19.19] |
+
+**H1 test** (pre-registered in `paper/PLAN.md`: TRIZ-on's yield is lower than TRIZ-off's, at
+matched length) — reported two ways, since they can disagree: the **pooled, token-weighted**
+bootstrap (resamples calls within case, then pools across all cases — a few token- or
+hit-heavy cases can dominate it) against a **per-case sign test** (each of the 40 cases
+counted once, regardless of how many tokens or hits it had):
+
+| Comparison | Pooled: P(TRIZ-on yield higher) | Per-case: TRIZ-on wins – loses (of 40) | Sign-test p | Verdict |
+|---|---|---|---|---|
+| Long prompt, on vs off | 0.951 | 10 – 8 | 0.81 | inconclusive (neither test is significant) |
+| Short prompt, on vs off | 0.000 | 6 – 11 | 0.33 | **pooled-only signal — not confirmed per-case** |
+
+**Reading this.**
+
+1. **At matched long-prompt length, yield is flat** — 11.05 vs 10.81 top solutions per 100k
+   tokens, well within noise of each other, consistent with v1's long-prompt finding (no
+   detected win-rate edge either).
+2. **At matched short-prompt length, the pooled numbers clearly favour TRIZ-off (18.52 vs
+   13.38)** — but this does NOT hold up case-by-case: TRIZ-on actually has the better yield
+   in only 6 of the 40 cases. The pooled bootstrap is dominated by a handful of
+   token-light, hit-heavy cases on the TRIZ-off side, which is exactly the kind of result
+   IM-LLM itself flags needs the per-need (here: per-case) check (its own Table 11), and
+   exactly why `cost_efficiency.py`/`yield_analysis.py` both report the case-clustered
+   version as primary, not the pooled one.
+3. **H1 is not confirmed.** Neither matched-length comparison clears significance at the
+   case level. Combined with v1: TRIZ-on reliably costs more tokens (+46 to +85/call), and
+   on this evidence — at n=40 cases — neither its pairwise win rate nor its top-solution
+   yield is distinguishable from TRIZ-off's. The honest result is a **null on both of
+   IM-LLM's own measures**, not a confirmed cost penalty: more problems would be needed to
+   tell whether the short-prompt pooled gap (point 2) is real or noise.
+4. **The stricter ≥2.3 threshold (9.7% kept) shows the same pattern**: pooled numbers lean
+   toward TRIZ-off at both prompt lengths (P≈0.000-0.002), case-level sign tests stay
+   non-significant (p=0.61, p=0.42). See `results/yield_strict.csv`.
+
+Re-run: `python scripts/score_solutions.py && python scripts/yield_analysis.py`.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `scripts/extract_calls.py` | token counts per call, from the sibling repo's cached text (zero API cost) |
-| `scripts/cost_efficiency.py` | joins token counts with existing judgements; cost-vs-win-rate stats |
+| `scripts/cost_efficiency.py` | v1: joins token counts with existing pairwise judgements; cost-vs-win-rate stats |
+| `scripts/score_solutions.py` | Phase 2: absolute per-solution score via Jev ($0.0258 for all 640) |
+| `scripts/yield_analysis.py` | Phase 2: thresholds the score, computes IM-LLM-style yield + H1 test |
 | `data/calls.csv` | one row per generation call: prompt/output/total tokens (tiktoken, cl100k_base) |
-| `results/cost_efficiency.csv` | the table in "Results" above |
-| `paper/PLAN.md` | the pre-registered Phase 2 design, in more detail than this README |
+| `data/jev_scores.jsonl` | one row per solution: Jev's expected position (0-4) on the creativity scale |
+| `results/cost_efficiency.csv` | the table in "Results (v1)" above |
+| `results/yield.csv`, `results/yield_h1_test.csv`, `results/yield_strict.csv` | the tables in "Results (Phase 2)" above |
+| `paper/PLAN.md` | the pre-registered Phase 2 design (hypotheses written before Phase 2 ran) |
 
 ## Provenance
 
 All source data (problems, prompts, generations, judgements) is `triz-on-vs-off-agent`'s;
 see that repo's `AGENTS.md` for the casebase and generation pipeline, and its
-`JEV_TRIZ_REPORT.md` for the Jev judge this repo's Jev row reuses. This repo adds no new
-generations and no new judgements in v1 — only token counting and a different statistical
-cut through data that already existed.
+`JEV_TRIZ_REPORT.md` for the Jev judge this repo's Jev rows reuse (v1) and extend (Phase 2,
+a new Jev question type — a `score` question rather than the `noul` pairwise question Jev
+report used — see `scripts/score_solutions.py`). v1 added no new generations and no new
+judgements, only token counting and a different statistical cut through data that already
+existed; Phase 2 adds 640 new Jev scoring calls ($0.0258 total), nothing else.

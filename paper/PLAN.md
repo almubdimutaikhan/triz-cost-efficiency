@@ -1,10 +1,10 @@
 # Plan: a cost-efficiency re-analysis of TRIZ priming
 
-Status: v1 complete (see repo root `README.md` and `results/cost_efficiency.csv`). This
-document is the pre-registered design for Phase 2, written before Phase 2 is run, in the
-style of `IM-LLM`'s persona follow-up (`persona_as_factor/README.md`) and
-`triz-on-vs-off-agent`'s own `M6_50ideas/README.md`: state the hypotheses and what would
-count as support, before seeing the result.
+Status: v1 and Phase 2 both complete (see repo root `README.md`). The hypotheses below were
+written down, and the threshold + test design fixed, **before** `score_solutions.py` was
+run — in the style of `IM-LLM`'s persona follow-up (`persona_as_factor/README.md`) and
+`triz-on-vs-off-agent`'s own `M6_50ideas/README.md`. The "Result" line under each hypothesis
+was added after Phase 2 ran; nothing above it was edited afterward.
 
 ## Background
 
@@ -43,14 +43,36 @@ was already being asked for.
   ratio (TRIZ-on ÷ TRIZ-off) is below 1. This is the predicted direction, based on v1: a real
   token premium with no detected win-rate edge should show up as lower yield once yield can
   be computed directly.
+
+  **Result (both prompt lengths, threshold 2.2 of 0-4, ~12% of all solutions):** not
+  confirmed at the case level. Long prompt: yield is flat (TRIZ-on 11.05 vs TRIZ-off 10.81
+  per 100k tokens; pooled P(on higher)=0.95, per-case sign test 10-8 of 40, p=0.81). Short
+  prompt: the pooled, token-weighted estimate favours TRIZ-off clearly (13.38 vs 18.52,
+  pooled P(on higher)=0.000), but the per-case sign test does **not** confirm it (TRIZ-on
+  wins only 6 of 40 cases, p=0.33) — a pooled-only signal, likely driven by a few
+  token-light, hit-heavy TRIZ-off cases, not a case-general effect. A stricter 2.3 threshold
+  (~10% kept) shows the same split (pooled favours TRIZ-off at both lengths, p≈0.000-0.002;
+  neither case-level sign test clears p<0.05). See root `README.md`, "Results (Phase 2)",
+  and `results/yield.csv` / `results/yield_strict.csv`.
 - **H2 (length is the bigger yield cost).** The long-prompt pair's yield gap from the
   short-prompt pair (at the same TRIZ setting) is larger than the TRIZ-on/off yield gap at
   matched length. Supported if |long−short yield ratio − 1| > |TRIZ-on/off yield ratio − 1|
   at both prompt lengths. Based on v1's +665/+704-token length cost against a
   worse-than-coin-flip win rate.
+
+  **Result:** not yet tested directly (the comparison needs `P_L_TRIZ_ON vs P_S_TRIZ_ON` and
+  `P_L_TRIZ_OFF vs P_S_TRIZ_OFF` run through `yield_analysis.py`'s same machinery, which
+  currently only wires up the two matched-length TRIZ-on/off pairs — `MATCHED_PAIRS` in
+  `scripts/yield_analysis.py` would need the other two pairs added). Flagged as the next
+  small addition, not done in this pass.
 - **H3 (null).** Neither H1 nor H2 holds — TRIZ-on's extra reasoning tokens translate into
-  enough extra top solutions that yield is flat or higher. This would reverse v1's reading
-  and would need to be reported as prominently as a confirming result.
+  enough extra top solutions that yield is flat or higher.
+
+  **Result:** this is closer to what happened at the case level — H1 is not confirmed by the
+  per-case test at either prompt length, so the honest summary across both v1 and Phase 2 is
+  a **null on win rate and a null on yield**, not a confirmed cost penalty. The one place a
+  real signal appears (short-prompt pooled yield) doesn't survive the stricter, case-general
+  test, which is exactly the check it was built to apply.
 
 ## Design
 
