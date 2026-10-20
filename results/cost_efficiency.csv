@@ -1,0 +1,7 @@
+comparison,question,judge,n_cases,n_verdicts,P_L_TRIZ_ON_tokens_mean,P_L_TRIZ_OFF_tokens_mean,delta_tokens,P_L_TRIZ_ON_win_rate,ci95_low,ci95_high,sign_test_p,significant_p05,P_S_TRIZ_ON_tokens_mean,P_S_TRIZ_OFF_tokens_mean,P_S_TRIZ_ON_win_rate,P_L_TRIZ_OFF_win_rate
+P_L_TRIZ_ON vs P_L_TRIZ_OFF,"does TRIZ help, at matched (long) prompt length?",gemini (current evaluator),39,75,1357,1272,85,0.538,0.405982905982906,0.6837606837606838,0.7111,False,,,,
+P_L_TRIZ_ON vs P_L_TRIZ_OFF,"does TRIZ help, at matched (long) prompt length?",jev (typesafe/jev-1.13),33,78,1357,1272,85,0.621,0.4772727272727273,0.7575757575757576,0.1078,False,,,,
+P_S_TRIZ_ON vs P_S_TRIZ_OFF,"does TRIZ help, at matched (short) prompt length?",gemini (current evaluator),39,80,,,46,,0.3888888888888889,0.6623931623931624,0.7283,False,654,607,0.53,
+P_S_TRIZ_ON vs P_S_TRIZ_OFF,"does TRIZ help, at matched (short) prompt length?",jev (typesafe/jev-1.13),37,88,,,46,,0.3581081081081081,0.6373873873873873,1.0,False,654,607,0.493,
+P_L_TRIZ_ON vs P_S_TRIZ_ON,"does a longer prompt help, with TRIZ already on?",gemini (current evaluator),39,89,1357,,704,0.47,0.3418803418803419,0.5982905982905983,1.0,False,654,,,
+P_L_TRIZ_OFF vs P_S_TRIZ_OFF,"does a longer prompt help, with TRIZ off (length alone)?",gemini (current evaluator),40,86,,1272,665,,0.33333333333333337,0.6083333333333333,1.0,False,,607,,0.471
