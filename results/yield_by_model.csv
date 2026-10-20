@@ -1,0 +1,9 @@
+model,triz,n,hits,yield_per_100k,ci_lo,ci_hi
+anthropic/claude-sonnet-4.5,ON,80,17,20.05,15.68,24.53
+anthropic/claude-sonnet-4.5,OFF,80,18,22.08,16.77,28.0
+deepseek/deepseek-chat-v3.1,ON,80,13,16.6,11.23,22.27
+deepseek/deepseek-chat-v3.1,OFF,80,14,18.72,13.35,24.19
+openai/gpt-4o,ON,80,0,0.0,0.0,0.0
+openai/gpt-4o,OFF,80,0,0.0,0.0,0.0
+google/gemini-2.5-flash,ON,80,8,8.65,4.83,12.26
+google/gemini-2.5-flash,OFF,80,8,10.43,5.45,15.59

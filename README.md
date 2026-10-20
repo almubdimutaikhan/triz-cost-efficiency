@@ -13,6 +13,17 @@ priming, is the token premium worth it?
 This README **is the plan**, not a finished paper. Section "Status" says exactly what has
 been run (v1, below — zero new API spend) and what hasn't (Phase 2).
 
+## TL;DR
+
+![Yield per arm, with 95% CI](results/charts/yield_by_arm.png)
+
+TRIZ-on costs real tokens (+46 to +85/call at matched prompt length) and, on both of
+IM-LLM's own measures — pairwise win rate (v1) and top-solution yield (Phase 2) — the result
+on this data (40 cases, 4 generator models) is a **null, not a confirmed penalty**: every
+95% CI for a TRIZ-on advantage straddles the no-difference line. The one place a gap looks
+real pooled (short-prompt yield) does not survive a per-case check. See "Results" below for
+the full breakdown, including by generator model.
+
 ---
 
 ## The question
@@ -90,7 +101,7 @@ Figure 5 "context ladder" framing: cost vs quality, not a saturating-count yield
 ### Reproduce
 
 ```bash
-pip install -r requirements.txt   # tiktoken, requests, pyyaml
+pip install -r requirements.txt   # tiktoken, requests, pyyaml, matplotlib
 # requires ../triz-on-vs-off-agent cloned alongside this repo (its generations + judgements
 # are read, not duplicated here — see "Why no vendored data" below)
 
@@ -102,6 +113,9 @@ python scripts/cost_efficiency.py --src ../triz-on-vs-off-agent --run factorial_
 python scripts/score_solutions.py --src ../triz-on-vs-off-agent --run factorial_129   # ~$0.03, 640 Jev calls
 python scripts/yield_analysis.py --threshold 2.2
 python scripts/yield_analysis.py --threshold 2.3 --out results/yield_strict.csv       # robustness check
+
+# figures — no API key needed, reads only this repo's own CSVs/JSONL
+python scripts/charts.py
 ```
 
 **Why no vendored data copy.** IM-LLM ships its `runs/`/`results/` directly so the paper
@@ -111,6 +125,8 @@ GitHub is exactly the shape of an unintended data-exfiltration pattern, so that 
 deliberately not taken. The dependency on a sibling clone is the honest tradeoff instead.
 
 ## Results (v1)
+
+![Win rate: TRIZ-on vs TRIZ-off, by judge](results/charts/win_rate_by_arm.png)
 
 From `results/cost_efficiency.csv`. Unit of analysis is the **case** (40 problems that have
 TRIZ-on/off pairs — see the sibling repo's `JEV_TRIZ_REPORT.md`), not the judgement: each
@@ -206,7 +222,23 @@ counted once, regardless of how many tokens or hits it had):
    toward TRIZ-off at both prompt lengths (P≈0.000-0.002), case-level sign tests stay
    non-significant (p=0.61, p=0.42). See `results/yield_strict.csv`.
 
-Re-run: `python scripts/score_solutions.py && python scripts/yield_analysis.py`.
+### By generator model
+
+![Yield by generator model](results/charts/yield_by_model.png)
+
+Pooled over both prompt lengths (`results/yield_by_model.csv`). Two things worth flagging,
+neither hidden by the pooled arm-level numbers above:
+
+- **No model's TRIZ-on CI clears its own TRIZ-off CI** — the TRIZ-on/off gap is not
+  significant within any single model either, consistent with the arm-level result.
+- **GPT-4o's yield is 0.0 [0.0, 0.0] at this threshold, both arms** — not a bug: its highest
+  Jev score across all 160 solutions is 2.17, just under the 2.2 cut (confirmed directly
+  against `data/jev_scores.jsonl`). The threshold was chosen on the *pooled* distribution
+  across all four models, so a model whose own ceiling sits lower reads as a flat zero here
+  — a real result worth knowing, but a threshold picked per-model would likely rank
+  differently. Not adjusted for, to avoid tuning the cut after seeing which model it favours.
+
+Re-run: `python scripts/score_solutions.py && python scripts/yield_analysis.py && python scripts/charts.py`.
 
 ## Repository layout
 
@@ -216,10 +248,12 @@ Re-run: `python scripts/score_solutions.py && python scripts/yield_analysis.py`.
 | `scripts/cost_efficiency.py` | v1: joins token counts with existing pairwise judgements; cost-vs-win-rate stats |
 | `scripts/score_solutions.py` | Phase 2: absolute per-solution score via Jev ($0.0258 for all 640) |
 | `scripts/yield_analysis.py` | Phase 2: thresholds the score, computes IM-LLM-style yield + H1 test |
+| `scripts/charts.py` | the three figures in this README, from this repo's own CSVs/JSONL (no new API calls) |
 | `data/calls.csv` | one row per generation call: prompt/output/total tokens (tiktoken, cl100k_base) |
 | `data/jev_scores.jsonl` | one row per solution: Jev's expected position (0-4) on the creativity scale |
 | `results/cost_efficiency.csv` | the table in "Results (v1)" above |
-| `results/yield.csv`, `results/yield_h1_test.csv`, `results/yield_strict.csv` | the tables in "Results (Phase 2)" above |
+| `results/yield.csv`, `results/yield_h1_test.csv`, `results/yield_strict.csv`, `results/yield_by_model.csv` | the tables in "Results (Phase 2)" above |
+| `results/charts/*.png` | the three embedded figures |
 | `paper/PLAN.md` | the pre-registered Phase 2 design (hypotheses written before Phase 2 ran) |
 
 ## Provenance

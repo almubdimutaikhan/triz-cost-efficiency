@@ -121,13 +121,28 @@ def main() -> None:
     ap.add_argument("--limit", type=int, help="only the first N solutions (smoke test)")
     args = ap.parse_args()
 
-    key, origin = api_key_and_base_url(args.src.resolve())
-    origin = re.sub(r"/api/v1$", "", origin)
     solutions = load_solutions(args.src, args.run)
     if args.limit:
         solutions = solutions[: args.limit]
-    print(f"{len(solutions)} solutions to score")
 
+    # the committed --out file (data/jev_scores.jsonl) IS the reproducible result: if it
+    # already has every hash, re-running costs $0 and makes no API calls at all, even with
+    # an empty/missing data/jev_scores/ cache dir (e.g. a fresh clone).
+    done = set()
+    if args.out.exists():
+        for line in args.out.open(encoding="utf-8"):
+            r = json.loads(line)
+            if r.get("position") is not None:
+                done.add(r["hash"])
+    todo = [s for s in solutions if s["hash"] not in done]
+    print(f"{len(solutions)} solutions, {len(done)} already in {args.out}, {len(todo)} to score")
+    if not todo:
+        print("Nothing to do — already fully reproducible from the committed file.")
+        return
+
+    key, origin = api_key_and_base_url(args.src.resolve())
+    origin = re.sub(r"/api/v1$", "", origin)
+    solutions = todo
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     def cache_key(sol):
@@ -160,10 +175,20 @@ def main() -> None:
             if i % 50 == 0 or i == len(solutions):
                 print(f"  [{i}/{len(solutions)}] {tag} last={rec['hash']} pos={rec.get('position')}")
 
+    # merge onto whatever was already in --out, keyed by hash, so a partial re-run (or one
+    # limited by --limit) never drops previously-scored solutions
+    merged = {}
+    if args.out.exists():
+        for line in args.out.open(encoding="utf-8"):
+            r = json.loads(line)
+            merged[r["hash"]] = r
+    for r in records:
+        merged[r["hash"]] = {k: v for k, v in r.items() if k != "_cached"}
     with args.out.open("w", encoding="utf-8") as fh:
-        for r in records:
-            fh.write(json.dumps({k: v for k, v in r.items() if k != "_cached"}) + "\n")
-    print(f"\n{len(records)} scored, {n_err} errors, ~${cost:.4f} spent this run -> {args.out}")
+        for r in merged.values():
+            fh.write(json.dumps(r) + "\n")
+    print(f"\n{len(records)} scored this run, {n_err} errors, ~${cost:.4f} spent -> "
+          f"{args.out} ({len(merged)} total)")
 
 
 if __name__ == "__main__":
