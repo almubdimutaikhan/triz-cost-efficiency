@@ -169,6 +169,15 @@ Gemini row as primary and the Jev row as a cheap, partially-independent cross-ch
 
 ## Results (Phase 2) — the actual IM-LLM yield metric
 
+![Top solutions per token: TRIZ on vs off, by prompt length](results/charts/yield_spread.png)
+
+Same construction as IM-LLM's own `8b_yield_spread.png`: a box plot of each arm's 2,000
+bootstrap yield slopes (calls resampled within case), the pooled slope marked and labelled,
+with a panel per prompt length so TRIZ-on and TRIZ-off are compared only against their
+length-matched counterpart — and, on the right, what each of the four prompts actually
+contains (here: how much system-prompt text, since this study's "context" is a prompt, not
+IM-LLM's product graph).
+
 `scripts/score_solutions.py` asks Jev to place each of the 640 solutions on a 5-level
 ordered creativity scale (originality, usefulness, feasibility, specificity, elegance — the
 same rubric as v1 and as the factorial evaluator), independent of any pairing, and returns
@@ -253,7 +262,7 @@ Re-run: `python scripts/score_solutions.py && python scripts/yield_analysis.py &
 | `data/jev_scores.jsonl` | one row per solution: Jev's expected position (0-4) on the creativity scale |
 | `results/cost_efficiency.csv` | the table in "Results (v1)" above |
 | `results/yield.csv`, `results/yield_h1_test.csv`, `results/yield_strict.csv`, `results/yield_by_model.csv` | the tables in "Results (Phase 2)" above |
-| `results/charts/*.png` | the three embedded figures |
+| `results/charts/*.png` | the four embedded figures |
 | `paper/PLAN.md` | the pre-registered Phase 2 design (hypotheses written before Phase 2 ran) |
 
 ## Provenance
